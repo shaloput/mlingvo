@@ -1,108 +1,184 @@
 import os
 import random
+import shutil
 from flask import Flask, render_template, session, redirect, url_for, request, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-# --- Конфигурация ---
-UPLOAD_FOLDER = 'uploads'
-COMPLETED_FOLDER = os.path.join(UPLOAD_FOLDER, 'completed')
-ALLOWED_EXTENSIONS = {'txt'}
-LEARNED_THRESHOLD = 5
+# --- App Initialization and Configuration ---
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['COMPLETED_FOLDER'] = COMPLETED_FOLDER
-app.secret_key = 'super_secret_key_for_multi_dictionary_quiz_app'
+app.config['SECRET_KEY'] = 'a_very_secret_key_that_should_be_changed'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['LEARNED_THRESHOLD'] = 5
+
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Пожалуйста, войдите, чтобы получить доступ к этой странице.'
 
 @app.context_processor
 def inject_constants():
     """Делает константы доступными во всех шаблонах."""
-    return dict(LEARNED_THRESHOLD=LEARNED_THRESHOLD)
+    return dict(LEARNED_THRESHOLD=app.config['LEARNED_THRESHOLD'])
 
-# --- Вспомогательные функции ---
 
-def allowed_file(filename):
-    """Проверяет, что у файла разрешенное расширение."""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# --- Database Models ---
 
-def get_dictionary_path(dictionary_name):
-    """
-    Возвращает путь к файлу словаря, ищет в обеих папках.
-    Возвращает None, если файл не найден.
-    """
-    if dictionary_name == 'default.txt':
-        return 'default.txt'
-    
-    active_path = os.path.join(app.config['UPLOAD_FOLDER'], dictionary_name)
-    completed_path = os.path.join(app.config['COMPLETED_FOLDER'], dictionary_name)
-    
-    if os.path.exists(active_path):
-        return active_path
-    if os.path.exists(completed_path):
-        return completed_path
-        
-    return None
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    dictionaries = db.relationship('Dictionary', backref='owner', lazy=True, cascade="all, delete-orphan")
 
-def load_dictionary(dictionary_name):
-    """
-    Загружает указанный словарь.
-    Формат строки: 'eng:rus:score'. Score - опционально.
-    Возвращает dict: {'word': {'translation': 'rus', 'score': 0}}
-    """
-    file_path = get_dictionary_path(dictionary_name)
-    if not file_path or not os.path.exists(file_path):
-        return None
-    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Dictionary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_completed = db.Column(db.Boolean, default=False)
+
+# --- Forms ---
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Имя пользователя', validators=[DataRequired(), Length(min=4, max=80)])
+    password = PasswordField('Пароль', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Подтвердите пароль', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Зарегистрироваться')
+
+    def validate_username(self, username):
+        user = User.query.filter_by(username=username.data).first()
+        if user:
+            raise ValidationError('Это имя пользователя уже занято.')
+
+class LoginForm(FlaskForm):
+    username = StringField('Имя пользователя', validators=[DataRequired()])
+    password = PasswordField('Пароль', validators=[DataRequired()])
+    submit = SubmitField('Войти')
+
+# --- Flask-Login User Loader ---
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# --- Helper Functions ---
+
+def get_user_dictionary_path(username, dictionary_name):
+    """Возвращает путь к файлу словаря пользователя."""
+    return os.path.join(app.config['UPLOAD_FOLDER'], username, dictionary_name)
+
+def get_user_completed_path(username, dictionary_name):
+    """Возвращает путь к файлу завершенного словаря пользователя."""
+    return os.path.join(app.config['UPLOAD_FOLDER'], username, 'completed', dictionary_name)
+
+def load_user_dictionary(username, dictionary_name):
+    """Загружает словарь пользователя."""
+    path = get_user_dictionary_path(username, dictionary_name)
+    if not os.path.exists(path):
+        path = get_user_completed_path(username, dictionary_name)
+        if not os.path.exists(path):
+            return None
+            
     dictionary = {}
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8') as f:
         for line in f:
             parts = line.strip().split(':')
             if len(parts) >= 2:
                 eng = parts[0].lower()
                 rus = parts[1]
-                score = 0
-                if len(parts) > 2:
-                    try:
-                        score = int(parts[2])
-                    except (ValueError, IndexError):
-                        score = 0
+                score = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
                 dictionary[eng] = {'translation': rus, 'score': score}
     return dictionary
 
-def save_dictionary(dictionary_name, dictionary_data):
-    """Сохраняет словарь в файл в формате 'eng:rus:score'."""
-    file_path = get_dictionary_path(dictionary_name)
-    if not file_path: # Если вдруг файл был удален или перемещен
-        flash(f'Не удалось найти путь для сохранения словаря {dictionary_name}', 'error')
-        return
-
-    with open(file_path, 'w', encoding='utf-8') as f:
+def save_user_dictionary(username, dictionary_name, dictionary_data):
+    """Сохраняет словарь пользователя."""
+    path = get_user_dictionary_path(username, dictionary_name)
+    if not os.path.exists(path):
+         path = get_user_completed_path(username, dictionary_name)
+         if not os.path.exists(path):
+            flash(f'Не удалось найти путь для сохранения словаря {dictionary_name}', 'error')
+            return
+            
+    with open(path, 'w', encoding='utf-8') as f:
         for eng, data in dictionary_data.items():
             line = f"{eng}:{data['translation']}:{data['score']}\n"
             f.write(line)
 
-# --- Маршруты (Routes) ---
+# --- Routes ---
 
 @app.route('/')
 def home():
-    """Главная страница со списками словарей и формой загрузки."""
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['COMPLETED_FOLDER'], exist_ok=True)
-    
-    active_files = [f for f in os.listdir(app.config['UPLOAD_FOLDER']) if os.path.isfile(os.path.join(app.config['UPLOAD_FOLDER'], f))]
-    completed_files = os.listdir(app.config['COMPLETED_FOLDER'])
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
 
-    active_dictionaries = ['default.txt'] + [f for f in active_files if allowed_file(f)]
-    completed_dictionaries = [f for f in completed_files if allowed_file(f)]
+    user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username)
+    completed_folder = os.path.join(user_folder, 'completed')
+    os.makedirs(user_folder, exist_ok=True)
+    os.makedirs(completed_folder, exist_ok=True)
+
+    active_dictionaries = Dictionary.query.filter_by(user_id=current_user.id, is_completed=False).all()
+    completed_dictionaries = Dictionary.query.filter_by(user_id=current_user.id, is_completed=True).all()
     
     return render_template('home.html', 
                            active_dictionaries=active_dictionaries,
                            completed_dictionaries=completed_dictionaries)
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user)
+            return redirect(url_for('home'))
+        else:
+            flash('Неверное имя пользователя или пароль.')
+    return render_template('login.html', form=form)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        
+        # Создаем папку для нового пользователя
+        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], user.username), exist_ok=True)
+        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], user.username, 'completed'), exist_ok=True)
+        
+        flash('Регистрация прошла успешно! Теперь вы можете войти.')
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
 @app.route('/upload', methods=['POST'])
+@login_required
 def upload_file():
-    """Обрабатывает загрузку файла словаря."""
     if 'file' not in request.files:
         flash('Не могу найти файл')
         return redirect(url_for('home'))
@@ -110,62 +186,44 @@ def upload_file():
     if file.filename == '':
         flash('Файл не выбран')
         return redirect(url_for('home'))
-    if file and allowed_file(file.filename):
+    if file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() == 'txt':
         filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        
+        # Проверяем, не существует ли уже такой словарь
+        if Dictionary.query.filter_by(user_id=current_user.id, name=filename).first():
+            flash(f'Словарь с именем "{filename}" уже существует.')
+            return redirect(url_for('home'))
+            
+        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username)
+        file.save(os.path.join(user_folder, filename))
+        
+        new_dict = Dictionary(name=filename, user_id=current_user.id)
+        db.session.add(new_dict)
+        db.session.commit()
+        
         flash(f'Словарь "{filename}" успешно загружен!')
-        return redirect(url_for('home'))
     else:
         flash('Разрешены только файлы с расширением .txt')
-        return redirect(url_for('home'))
-
-@app.route('/move_to_completed/<string:dictionary_name>')
-def move_to_completed(dictionary_name):
-    """Перемещает словарь в папку завершенных."""
-    if dictionary_name == 'default.txt':
-        flash('Словарь по умолчанию нельзя переместить.')
-        return redirect(url_for('home'))
-        
-    src_path = os.path.join(app.config['UPLOAD_FOLDER'], dictionary_name)
-    dest_path = os.path.join(app.config['COMPLETED_FOLDER'], dictionary_name)
-
-    if os.path.exists(src_path):
-        os.rename(src_path, dest_path)
-        flash(f'Словарь "{dictionary_name}" перемещен в завершенные.')
-    else:
-        flash('Файл не найден.')
     return redirect(url_for('home'))
 
-@app.route('/restore_from_completed/<string:dictionary_name>')
-def restore_from_completed(dictionary_name):
-    """Восстанавливает словарь из завершенных."""
-    src_path = os.path.join(app.config['COMPLETED_FOLDER'], dictionary_name)
-    dest_path = os.path.join(app.config['UPLOAD_FOLDER'], dictionary_name)
-
-    if os.path.exists(src_path):
-        os.rename(src_path, dest_path)
-        flash(f'Словарь "{dictionary_name}" восстановлен.')
-    else:
-        flash('Файл не найден.')
-    return redirect(url_for('home'))
 
 @app.route('/quiz/<string:dictionary_name>')
+@login_required
 def quiz(dictionary_name):
-    """Страница викторины для выбранного словаря."""
-    if 'quiz_dictionaries' not in session:
-        session['quiz_dictionaries'] = {}
+    dic = Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first_or_404()
+    
+    session_key = f"quiz_dict_{current_user.id}_{dictionary_name}"
 
-    if dictionary_name not in session['quiz_dictionaries']:
-        full_dictionary = load_dictionary(dictionary_name)
-        if not full_dictionary:
+    if session_key not in session:
+        full_dictionary = load_user_dictionary(current_user.username, dictionary_name)
+        if full_dictionary is None:
             flash(f"Словарь '{dictionary_name}' не найден.")
             return redirect(url_for('home'))
-        session['quiz_dictionaries'][dictionary_name] = full_dictionary
+        session[session_key] = full_dictionary
         session.modified = True
-    
-    current_dictionary = session['quiz_dictionaries'][dictionary_name]
-    
-    word_pool = [word for word, data in current_dictionary.items() if data['score'] < LEARNED_THRESHOLD]
+
+    current_dictionary = session[session_key]
+    word_pool = [word for word, data in current_dictionary.items() if data['score'] < app.config['LEARNED_THRESHOLD']]
 
     if not word_pool:
         return redirect(url_for('completed', dictionary_name=dictionary_name))
@@ -177,91 +235,235 @@ def quiz(dictionary_name):
     incorrect_translations = [t for t in all_translations if t != correct_translation]
     
     num_incorrect = min(3, len(incorrect_translations))
-    random_incorrect_options = random.sample(incorrect_translations, num_incorrect)
+    random_incorrect_options = random.sample(incorrect_translations, num_incorrect) if incorrect_translations else []
 
     options = random_incorrect_options + [correct_translation]
     random.shuffle(options)
 
     return render_template('quiz.html', 
-        word_to_translate=word_to_translate.capitalize(), 
-        options=options,
-        dictionary_name=dictionary_name
-    )
+                           word_to_translate=word_to_translate.capitalize(), 
+                           options=options,
+                           dictionary_name=dictionary_name)
 
 @app.route('/check/<string:dictionary_name>')
+@login_required
 def check_answer(dictionary_name):
-    """Проверяет ответ, обновляет сессию и сохраняет в файл."""
     word = request.args.get('word', '').lower()
     user_answer = request.args.get('answer', '')
+    session_key = f"quiz_dict_{current_user.id}_{dictionary_name}"
 
-    # Проверяем, что словарь все еще в сессии. Если нет - редирект
-    if not word or not user_answer or dictionary_name not in session.get('quiz_dictionaries', {}):
+    if not word or not user_answer or session_key not in session:
         flash('Сессия для данного словаря устарела, начните заново.', 'warning')
         return redirect(url_for('home'))
 
-    current_dictionary = session['quiz_dictionaries'][dictionary_name]
-    correct_translation = current_dictionary[word].get('translation')
+    current_dictionary = session[session_key]
+    correct_translation = current_dictionary.get(word, {}).get('translation')
     is_correct = (user_answer == correct_translation)
 
     if is_correct:
         current_dictionary[word]['score'] += 1
         session.modified = True
-        save_dictionary(dictionary_name, current_dictionary)
+        save_user_dictionary(current_user.username, dictionary_name, current_dictionary)
     
-    options = request.args.getlist('option')
-    score = current_dictionary[word]['score']
-
     return render_template('answer.html',
-        word_to_translate=word.capitalize(),
-        options=options,
-        user_answer=user_answer,
-        correct_answer=correct_translation,
-        is_correct=is_correct,
-        score=score,
-        dictionary_name=dictionary_name
-    )
+                           word_to_translate=word.capitalize(),
+                           options=request.args.getlist('option'),
+                           user_answer=user_answer,
+                           correct_answer=correct_translation,
+                           is_correct=is_correct,
+                           score=current_dictionary.get(word, {}).get('score', 0),
+                           dictionary_name=dictionary_name)
 
-@app.route('/completed/<string:dictionary_name>')
-def completed(dictionary_name):
-    """Страница завершения для конкретного словаря."""
-    return render_template('completed.html', dictionary_name=dictionary_name)
+
+@app.route('/move_to_completed/<string:dictionary_name>')
+@login_required
+def move_to_completed(dictionary_name):
+    dic = Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first_or_404()
+    
+    user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username)
+    completed_folder = os.path.join(user_folder, 'completed')
+    
+    src = os.path.join(user_folder, dictionary_name)
+    dest = os.path.join(completed_folder, dictionary_name)
+    
+    if os.path.exists(src):
+        shutil.move(src, dest)
+        dic.is_completed = True
+        db.session.commit()
+        flash(f'Словарь "{dictionary_name}" перемещен в завершенные.')
+    else:
+        flash('Файл не найден.', 'error')
+    return redirect(url_for('home'))
+
+
+@app.route('/restore_from_completed/<string:dictionary_name>')
+@login_required
+def restore_from_completed(dictionary_name):
+    dic = Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first_or_404()
+
+    user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username)
+    completed_folder = os.path.join(user_folder, 'completed')
+    
+    src = os.path.join(completed_folder, dictionary_name)
+    dest = os.path.join(user_folder, dictionary_name)
+
+    if os.path.exists(src):
+        shutil.move(src, dest)
+        dic.is_completed = False
+        db.session.commit()
+        flash(f'Словарь "{dictionary_name}" восстановлен.')
+    else:
+        flash('Файл не найден.', 'error')
+    return redirect(url_for('home'))
+
+
+@app.route('/delete/<string:dictionary_name>')
+@login_required
+def delete_dictionary(dictionary_name):
+    dic = Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first_or_404()
+    
+    path = get_user_dictionary_path(current_user.username, dictionary_name)
+    if not os.path.exists(path):
+        path = get_user_completed_path(current_user.username, dictionary_name)
+
+    if os.path.exists(path):
+        os.remove(path)
+
+    session_key = f"quiz_dict_{current_user.id}_{dictionary_name}"
+    if session_key in session:
+        del session[session_key]
+        session.modified = True
+
+    db.session.delete(dic)
+    db.session.commit()
+    flash(f'Словарь "{dictionary_name}" удален.')
+    return redirect(url_for('home'))
+
 
 @app.route('/reset_scores/<string:dictionary_name>')
+@login_required
 def reset_scores(dictionary_name):
-    """Сбрасывает счет в файле и в сессии."""
-    full_dictionary = load_dictionary(dictionary_name)
+    dic = Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first_or_404()
+    
+    full_dictionary = load_user_dictionary(current_user.username, dictionary_name)
     if full_dictionary:
         for word in full_dictionary:
             full_dictionary[word]['score'] = 0
-        save_dictionary(dictionary_name, full_dictionary)
+        save_user_dictionary(current_user.username, dictionary_name, full_dictionary)
         
-        if 'quiz_dictionaries' in session and dictionary_name in session['quiz_dictionaries']:
-            del session['quiz_dictionaries'][dictionary_name]
+        session_key = f"quiz_dict_{current_user.id}_{dictionary_name}"
+        if session_key in session:
+            del session[session_key]
             session.modified = True
         flash(f'Счет для словаря "{dictionary_name}" сброшен.')
     else:
-        flash(f'Не удалось найти словарь "{dictionary_name}".')
+        flash(f'Не удалось найти словарь "{dictionary_name}".', 'error')
         
     return redirect(url_for('home'))
 
-@app.route('/delete/<string:dictionary_name>')
-def delete_dictionary(dictionary_name):
-    """Удаляет загруженный словарь из любой папки."""
-    if dictionary_name == 'default.txt':
-        flash('Словарь по умолчанию нельзя удалить.')
-        return redirect(url_for('home'))
+@app.route('/completed/<string:dictionary_name>')
+@login_required
+def completed(dictionary_name):
+    return render_template('completed.html', dictionary_name=dictionary_name)
 
-    file_path = get_dictionary_path(dictionary_name)
-    if file_path and os.path.exists(file_path):
-        os.remove(file_path)
-        if 'quiz_dictionaries' in session and dictionary_name in session['quiz_dictionaries']:
-            del session['quiz_dictionaries'][dictionary_name]
-            session.modified = True
-        flash(f'Словарь "{dictionary_name}" удален.')
-    else:
-        flash(f'Не удалось найти словарь "{dictionary_name}" для удаления.')
+# --- Admin Routes ---
+@app.route('/admin')
+@login_required
+def admin_panel():
+    if not current_user.is_admin:
+        flash('У вас нет прав для доступа к этой странице.')
+        return redirect(url_for('home'))
+    users = User.query.all()
+    return render_template('admin.html', users=users)
+
+@app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def edit_user(user_id):
+    if not current_user.is_admin:
+        flash('У вас нет прав для доступа к этой странице.')
+        return redirect(url_for('home'))
     
-    return redirect(url_for('home'))
+    user_to_edit = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        original_username = request.form.get('original_username')
+        new_username = request.form.get('username')
+        is_admin = request.form.get('is_admin') == 'on'
+        
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate username
+        if new_username != original_username and User.query.filter_by(username=new_username).first():
+            flash('Это имя пользователя уже занято.', 'error')
+            return render_template('edit_user.html', user=user_to_edit)
+
+        # Validate password
+        if new_password:
+            if new_password != confirm_password:
+                flash('Пароли не совпадают.', 'error')
+                return render_template('edit_user.html', user=user_to_edit)
+            user_to_edit.set_password(new_password)
+
+        # Rename folder if username changes
+        if new_username != original_username:
+            old_path = os.path.join(app.config['UPLOAD_FOLDER'], original_username)
+            new_path = os.path.join(app.config['UPLOAD_FOLDER'], new_username)
+            if os.path.exists(old_path):
+                try:
+                    os.rename(old_path, new_path)
+                except OSError as e:
+                    flash(f'Не удалось переименовать папку пользователя: {e}', 'error')
+                    return render_template('edit_user.html', user=user_to_edit)
+
+        user_to_edit.username = new_username
+        user_to_edit.is_admin = is_admin
+        db.session.commit()
+        flash(f'Данные пользователя {user_to_edit.username} обновлены.', 'success')
+        return redirect(url_for('admin_panel'))
+
+    return render_template('edit_user.html', user=user_to_edit)
+
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if not current_user.is_admin:
+        flash('У вас нет прав для доступа к этой странице.')
+        return redirect(url_for('home'))
+    
+    if user_id == current_user.id:
+        flash('Вы не можете удалить самого себя.', 'error')
+        return redirect(url_for('admin_panel'))
+
+    user_to_delete = User.query.get_or_404(user_id)
+    
+    # Remove user's dictionary folder
+    user_folder = os.path.join(app.config['UPLOAD_FOLDER'], user_to_delete.username)
+    if os.path.exists(user_folder):
+        shutil.rmtree(user_folder)
+        
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    flash(f'Пользователь {user_to_delete.username} был удален.', 'success')
+    return redirect(url_for('admin_panel'))
+
+
+def init_db_and_admin():
+    with app.app_context():
+        db.create_all()
+        if not User.query.filter_by(username='admin').first():
+            admin = User(username='admin', is_admin=True)
+            admin.set_password('admin')
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin user created.")
+            
+            # Create folder for admin user
+            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'admin'), exist_ok=True)
+            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'admin', 'completed'), exist_ok=True)
+
 
 if __name__ == '__main__':
+    init_db_and_admin()
     app.run(host='0.0.0.0', debug=True, port=5001)

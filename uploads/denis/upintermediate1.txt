@@ -1,20 +1,20 @@
-ambition:амбиция:1
+ambition:амбиция:0
 assumption:предположение:0
-awareness:осведомленность:1
-behaviour:поведение:1
+awareness:осведомленность:0
+behaviour:поведение:0
 consequence:следствие:0
-contribution:вклад:1
+contribution:вклад:0
 determination:решимость:0
-efficiency:эффективность:2
+efficiency:эффективность:0
 expansion:расширение:0
 feedback:обратная связь:0
-fulfillment:исполнение:2
+fulfillment:исполнение:0
 impact:влияние:1
 instruction:инструкция:0
 interaction:взаимодействие:0
 motivation:мотивация:0
-perspective:точка зрения:2
+perspective:точка зрения:0
 priority:приоритет:0
-rationale:основание:2
-resource:ресурс:1
+rationale:основание:0
+resource:ресурс:0
 strategy:стратегия:0

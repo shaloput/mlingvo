@@ -1,0 +1,20 @@
+ambition:амбиция
+assumption:предположение
+awareness:осведомленность
+behaviour:поведение
+consequence:следствие
+contribution:вклад
+determination:решимость
+efficiency:эффективность
+expansion:расширение
+feedback:обратная связь
+fulfillment:исполнение
+impact:влияние
+instruction:инструкция
+interaction:взаимодействие
+motivation:мотивация
+perspective:точка зрения
+priority:приоритет
+rationale:основание
+resource:ресурс
+strategy:стратегия

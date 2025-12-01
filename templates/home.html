@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выбор словаря</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .dictionary-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .dictionary-list li {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+        }
+        .dictionary-list a.play {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+        .dictionary-list a.reset {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #ffc107;
+            color: #333;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-left: 10px;
+        }
+        .dictionary-list a.complete {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-left: 10px;
+        }
+        .dictionary-list a.restore {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-left: 10px;
+        }
+        h2.completed-header {
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+            padding-top: 30px;
+        }
+        .upload-form {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+        }
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .flash-messages li {
+            padding: 15px;
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Мои Словари</h1>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class=flash-messages>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <h2>Активные словари</h2>
+        <ul class="dictionary-list">
+            {% for dic in active_dictionaries %}
+            <li>
+                <span>{{ dic }}</span>
+                <div>
+                    <a href="{{ url_for('quiz', dictionary_name=dic) }}" class="play" title="Начать тест">Играть</a>
+                    <a href="{{ url_for('reset_scores', dictionary_name=dic) }}" class="reset" title="Сбросить счет">Сброс</a>
+                    {% if dic != 'default.txt' %}
+                    <a href="{{ url_for('move_to_completed', dictionary_name=dic) }}" class="complete" title="Отметить как завершенный">Завершить</a>
+                    <a href="{{ url_for('delete_dictionary', dictionary_name=dic) }}" 
+                       class="delete" title="Удалить словарь"
+                       onclick="return confirm('Вы уверены, что хотите удалить словарь \'{{ dic }}\'? Этот процесс необратим.');">Удалить</a>
+                    {% endif %}
+                </div>
+            </li>
+            {% else %}
+            <li><span>Нет активных словарей.</span></li>
+            {% endfor %}
+        </ul>
+
+        {% if completed_dictionaries %}
+        <h2 class="completed-header">Завершенные словари</h2>
+        <ul class="dictionary-list">
+            {% for dic in completed_dictionaries %}
+            <li>
+                <span>{{ dic }}</span>
+                <div>
+                    <a href="{{ url_for('quiz', dictionary_name=dic) }}" class="play" title="Повторить">Повторить</a>
+                    <a href="{{ url_for('restore_from_completed', dictionary_name=dic) }}" class="restore" title="Вернуть в активные">Восстановить</a>
+                    <a href="{{ url_for('delete_dictionary', dictionary_name=dic) }}" 
+                       class="delete" title="Удалить словарь"
+                       onclick="return confirm('Вы уверены, что хотите удалить словарь \'{{ dic }}\'? Этот процесс необратим.');">Удалить</a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <div class="upload-form">
+            <h2>Загрузить новый словарь</h2>
+            <p>Файл должен быть в формате .txt, каждая строка: <code>слово:перевод:счет</code></p>
+            <form method="post" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+                <input type="file" name="file">
+                <input type="submit" value="Загрузить">
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>

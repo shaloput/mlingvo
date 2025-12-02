@@ -162,10 +162,21 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        # Создаем папку для нового пользователя
-        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], user.username), exist_ok=True)
-        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], user.username, 'completed'), exist_ok=True)
-        
+        # --- Create user folder and copy default dictionary ---
+        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], user.username)
+        completed_folder = os.path.join(user_folder, 'completed')
+        os.makedirs(user_folder, exist_ok=True)
+        os.makedirs(completed_folder, exist_ok=True)
+
+        # Copy default dictionary
+        default_dic_path = 'default.txt'
+        if os.path.exists(default_dic_path):
+            shutil.copy(default_dic_path, os.path.join(user_folder, 'default.txt'))
+            # Add to database
+            new_dict = Dictionary(name='default.txt', user_id=user.id)
+            db.session.add(new_dict)
+            db.session.commit()
+
         flash('Регистрация прошла успешно! Теперь вы можете войти.')
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
@@ -458,10 +469,22 @@ def init_db_and_admin():
             db.session.add(admin)
             db.session.commit()
             print("Admin user created.")
-            
-            # Create folder for admin user
-            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'admin'), exist_ok=True)
-            os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'admin', 'completed'), exist_ok=True)
+
+            # --- Create admin folder and copy default dictionary ---
+            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], admin.username)
+            completed_folder = os.path.join(user_folder, 'completed')
+            os.makedirs(user_folder, exist_ok=True)
+            os.makedirs(completed_folder, exist_ok=True)
+
+            # Copy default dictionary
+            default_dic_path = 'default.txt'
+            if os.path.exists(default_dic_path):
+                shutil.copy(default_dic_path, os.path.join(user_folder, 'default.txt'))
+                # Add to database
+                new_dict = Dictionary(name='default.txt', user_id=admin.id)
+                db.session.add(new_dict)
+                db.session.commit()
+                print("Default dictionary copied for admin.")
 
 
 if __name__ == '__main__':

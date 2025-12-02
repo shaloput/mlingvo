@@ -1,12 +1,14 @@
-hi
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt 
-python3 app.py
+###Manual start
+`python3 -m venv venv
+`source venv/bin/activate
+`pip install -r requirements.txt 
+`python3 app.py
 
 ---
+###Start as linux service
 
-/etc/systemd/system/mlingvo.service 
+Create file:
+`/etc/systemd/system/mlingvo.service 
 
 ```
 [Unit]
@@ -24,6 +26,6 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-sudo systemctl daemon-reload
-systemctl enable  mlingvo.service
-systemctl start mlingvo.service
+`sudo systemctl daemon-reload
+`systemctl enable  mlingvo.service
+`systemctl start mlingvo.service

@@ -177,7 +177,7 @@ def register():
             db.session.add(new_dict)
             db.session.commit()
 
-        flash('Регистрация прошла успешно! Теперь вы можете войти.')
+        flash('Регистрация прошла успешно! Теперь вы можете войти.', 'success')
         return redirect(url_for('login'))
     return render_template('register.html', form=form)
 

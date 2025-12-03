@@ -3,28 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Вход</title>
-    <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }
-        .container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { text-align: center; }
-        .form-field { margin-bottom: 1rem; }
-        .form-field label { display: block; margin-bottom: 0.5rem; }
-        .form-field input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
-        .submit-btn { width: 100%; padding: 0.75rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .submit-btn:hover { background-color: #0056b3; }
-        .flash-messages { list-style: none; padding: 0; margin-bottom: 1rem; }
-        .flash-messages li { background-color: #f8d7da; color: #721c24; padding: 0.75rem; border-radius: 4px; }
-        .links { margin-top: 1rem; text-align: center; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <div class="container">
+<body class="auth-body">
+    <div class="container auth-container">
         <h1>Вход</h1>
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <ul class=flash-messages>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
+                <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
                 {% endfor %}
                 </ul>
             {% endif %}
@@ -40,7 +28,7 @@
                 {{ form.password() }}
             </div>
             <div class="form-field">
-                {{ form.submit(class="submit-btn") }}
+                {{ form.submit(class="submit-btn login") }}
             </div>
         </form>
         <div class="links">

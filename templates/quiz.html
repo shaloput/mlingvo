@@ -4,85 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Угадай перевод</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-            color: #333;
-        }
-        .quiz-container {
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            width: 90%;
-            max-width: 500px;
-        }
-        h1 {
-            font-size: 3em;
-            margin-bottom: 20px;
-            color: #111;
-        }
-        .options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 30px;
-        }
-        .option-link {
-            text-decoration: none;
-            color: inherit;
-        }
-        .option {
-            padding: 20px;
-            background-color: #f0f2f5;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            font-size: 1.2em;
-        }
-        .option:hover {
-            transform: translateY(-5px);
-            border-color: #007bff;
-            background-color: #e9f5ff;
-        }
-        .back-link {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            text-decoration: none;
-            font-size: 1.2em;
-            color: #007bff;
-        }
-        .word-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
-        .speak-btn {
-            background: none;
-            border: none;
-            font-size: 2rem;
-            cursor: pointer;
-            color: #555;
-            transition: color 0.2s;
-        }
-        .speak-btn:hover {
-            color: #007bff;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="quiz-body">
     <a href="{{ url_for('home') }}" class="back-link">&larr; К списку словарей</a>
-    <div class="quiz-container">
+    <div class="container quiz-container">
         <div class="word-container">
             <h1>{{ word_to_translate }}</h1>
             <button class="speak-btn" onclick="speak('{{ word_to_translate }}')">🔊</button>

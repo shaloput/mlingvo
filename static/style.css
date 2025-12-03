@@ -1,0 +1,366 @@
+/* General Body and Container Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    padding: 20px;
+    margin: 0;
+}
+
+.container {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+h1, h2 {
+    text-align: center;
+}
+
+/* Auth pages (Login/Register/Edit User) specific styles */
+.auth-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 0;
+}
+
+.auth-container {
+    max-width: 400px;
+    width: 100%;
+    padding: 2rem;
+}
+
+.form-field {
+    margin-bottom: 1.5rem;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.form-field input[type="text"],
+.form-field input[type="password"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.form-field input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 0.75rem;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.submit-btn.login { background-color: #007bff; }
+.submit-btn.login:hover { background-color: #0056b3; }
+.submit-btn.register { background-color: #28a745; }
+.submit-btn.register:hover { background-color: #218838; }
+
+
+.links, .cancel-link {
+    display: block;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+/* Flash Messages */
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.flash-messages li {
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid transparent;
+}
+
+.flash-messages li.success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.flash-messages li.error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* For home page flash messages that don't use categories */
+.flash-messages li:not(.success):not(.error) {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+
+/* Home Page Styles */
+.user-info {
+    text-align: right;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+}
+.user-info a {
+    margin-left: 15px;
+    text-decoration: none;
+    color: #007bff;
+}
+.user-info a.admin-link {
+    font-weight: bold;
+    color: #dc3545;
+}
+
+.dictionary-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 20px 0;
+}
+.dictionary-list li {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    flex-wrap: wrap;
+}
+.dic-name {
+    font-weight: 500;
+}
+.dic-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+@media (min-width: 600px) {
+    .dic-actions {
+        margin-top: 0;
+    }
+}
+.dic-actions a, .dic-actions .delete {
+    display: inline-block;
+    padding: 8px 12px;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.dic-actions .play { background-color: #28a745; }
+.dic-actions .reset { background-color: #ffc107; color: #333; }
+.dic-actions .complete { background-color: #17a2b8; }
+.dic-actions .restore { background-color: #007bff; }
+.dic-actions .delete { background-color: #dc3545; font-family: inherit; } /* Ensure button font matches */
+
+h2.completed-header {
+    margin-top: 40px;
+    border-top: 1px solid #ddd;
+    padding-top: 30px;
+}
+
+.upload-form {
+    margin-top: 30px;
+    padding: 20px;
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+}
+
+/* Admin Panel Styles */
+.admin-container {
+    max-width: 900px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+th, td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+th {
+    background-color: #f8f9fa;
+}
+.actions a, .actions button {
+    text-decoration: none;
+    padding: 5px 10px;
+    margin-right: 5px;
+    border-radius: 4px;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+.actions .edit { background-color: #007bff; }
+.actions .delete { background-color: #dc3545; }
+.home-link { display: block; text-align: center; margin-top: 20px; }
+
+/* Quiz & Answer Page Styles */
+.quiz-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.quiz-container {
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+}
+
+.quiz-container h1 {
+    font-size: 3em;
+    margin-bottom: 20px;
+    color: #111;
+}
+
+.options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.option {
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1.2em;
+}
+
+.option-link {
+    text-decoration: none;
+    color: inherit;
+}
+.option-link .option:hover {
+    transform: translateY(-5px);
+    border-color: #007bff;
+    background-color: #e9f5ff;
+}
+
+.message {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+.message.correct { color: #28a745; }
+.message.incorrect { color: #dc3545; }
+
+.correct {
+    background-color: #d4edda;
+    border-color: #28a745;
+}
+
+.incorrect {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+}
+.correct-outline {
+    border-color: #28a745 !important; /* Use important to override other borders */
+    border-width: 3px;
+}
+
+.button-container {
+    margin-top: 40px;
+}
+
+a.next-word {
+    display: inline-block;
+    padding: 15px 30px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+}
+
+.score {
+    margin-top: 20px;
+    font-size: 1.1em;
+    color: #666;
+}
+
+.back-link {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    text-decoration: none;
+    font-size: 1.2em;
+    color: #007bff;
+}
+
+.word-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+.speak-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #555;
+    transition: color 0.2s;
+}
+.speak-btn:hover {
+    color: #007bff;
+}
+
+/* Completed Page Styles */
+.completed-container h1 {
+    font-size: 2.5em;
+    color: #28a745;
+}
+
+.completed-container p {
+    font-size: 1.2em;
+    margin: 20px 0;
+}
+
+.completed-container .button-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+.completed-container a.button {
+    display: inline-block;
+    padding: 15px 30px;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    transition: background-color 0.2s ease;
+}
+.completed-container a.button.reset {
+    background-color: #007bff;
+}
+.completed-container a.button.home {
+    background-color: #6c757d;
+}

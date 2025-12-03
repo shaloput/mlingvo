@@ -9,6 +9,7 @@ from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 # --- App Initialization and Configuration ---
 
@@ -38,6 +39,7 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(120), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     dictionaries = db.relationship('Dictionary', backref='owner', lazy=True, cascade="all, delete-orphan")
+    login_history = db.relationship('LoginHistory', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -50,6 +52,11 @@ class Dictionary(db.Model):
     name = db.Column(db.String(120), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
+
+class LoginHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 # --- Forms ---
 
@@ -146,9 +153,13 @@ def login():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
             login_user(user)
+            # Record the login event
+            login_record = LoginHistory(user_id=user.id)
+            db.session.add(login_record)
+            db.session.commit()
             return redirect(url_for('home'))
         else:
-            flash('Неверное имя пользователя или пароль.')
+            flash('Неверное имя пользователя или пароль.', 'error')
     return render_template('login.html', form=form)
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -384,8 +395,21 @@ def admin_panel():
     if not current_user.is_admin:
         flash('У вас нет прав для доступа к этой странице.')
         return redirect(url_for('home'))
-    users = User.query.all()
-    return render_template('admin.html', users=users)
+    # Subquery to find the latest login time for each user
+    last_login_subquery = db.session.query(
+        LoginHistory.user_id,
+        db.func.max(LoginHistory.timestamp).label('last_login_time')
+    ).group_by(LoginHistory.user_id).subquery()
+
+    # Query users and join with the subquery to get the last login time
+    users = db.session.query(
+        User,
+        last_login_subquery.c.last_login_time
+    ).outerjoin(
+        last_login_subquery, User.id == last_login_subquery.c.user_id
+    ).all()
+
+    return render_template('admin.html', users_with_login=users)
 
 @app.route('/admin/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required

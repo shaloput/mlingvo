@@ -12,6 +12,7 @@
         {% if current_user.is_authenticated %}
         <div class="user-info">
             <span>Привет, <strong>{{ current_user.username }}</strong>!</span>
+            <a href="{{ url_for('edit_dictionary') }}">Редактировать словарь</a>
             <a href="{{ url_for('dictionaries') }}">Управление словарями</a>
 
             {% if current_user.is_admin %}

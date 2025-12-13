@@ -212,7 +212,7 @@ th {
     padding: 5px 10px;
     margin-right: 5px;
     border-radius: 4px;
-    color: white;
+    color: #333; /* Changed from white */
     border: none;
     cursor: pointer;
 }

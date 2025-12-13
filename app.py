@@ -198,35 +198,64 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/upload', methods=['POST'])
+@app.route('/dictionaries', methods=['GET', 'POST'])
 @login_required
-def upload_file():
-    if 'file' not in request.files:
-        flash('Не могу найти файл')
-        return redirect(url_for('home'))
-    file = request.files['file']
-    if file.filename == '':
-        flash('Файл не выбран')
-        return redirect(url_for('home'))
-    if file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() == 'txt':
-        filename = secure_filename(file.filename)
-        
-        # Проверяем, не существует ли уже такой словарь
-        if Dictionary.query.filter_by(user_id=current_user.id, name=filename).first():
-            flash(f'Словарь с именем "{filename}" уже существует.')
-            return redirect(url_for('home'))
+def dictionaries():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('Не могу найти файл')
+            return redirect(request.url)
+        file = request.files['file']
+        if file.filename == '':
+            flash('Файл не выбран')
+            return redirect(request.url)
+        if file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() == 'txt':
+            filename = secure_filename(file.filename)
             
-        user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username)
-        file.save(os.path.join(user_folder, filename))
-        
-        new_dict = Dictionary(name=filename, user_id=current_user.id)
-        db.session.add(new_dict)
-        db.session.commit()
-        
-        flash(f'Словарь "{filename}" успешно загружен!')
-    else:
-        flash('Разрешены только файлы с расширением .txt')
+            if Dictionary.query.filter_by(user_id=current_user.id, name=filename).first():
+                flash(f'Словарь с именем "{filename}" уже существует.')
+                return redirect(request.url)
+                
+            user_folder = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username)
+            file.save(os.path.join(user_folder, filename))
+            
+            new_dict = Dictionary(name=filename, user_id=current_user.id)
+            db.session.add(new_dict)
+            db.session.commit()
+            
+            flash(f'Словарь "{filename}" успешно загружен!')
+            return redirect(url_for('home'))
+        else:
+            flash('Разрешены только файлы с расширением .txt')
+            return redirect(request.url)
+    return render_template('dictionary_management.html')
+
+@app.route('/dictionaries/select')
+@login_required
+def select_dictionary():
+    dictionaries = os.listdir('dict')
+    return render_template('select_dictionary.html', dictionaries=dictionaries)
+
+@app.route('/dictionaries/add/<string:dictionary_name>')
+@login_required
+def add_dictionary_from_list(dictionary_name):
+    # check if dictionary already exists
+    if Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first():
+        flash(f'Словарь с именем "{dictionary_name}" уже существует.')
+        return redirect(url_for('dictionaries'))
+
+    src = os.path.join('dict', dictionary_name)
+    dst = os.path.join(app.config['UPLOAD_FOLDER'], current_user.username, dictionary_name)
+    shutil.copy(src, dst)
+
+    new_dict = Dictionary(name=dictionary_name, user_id=current_user.id)
+    db.session.add(new_dict)
+    db.session.commit()
+
+    flash(f'Словарь "{dictionary_name}" успешно добавлен!')
     return redirect(url_for('home'))
+
+
 
 
 @app.route('/quiz/<string:dictionary_name>')

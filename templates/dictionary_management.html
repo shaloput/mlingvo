@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="user-info">
+    <a href="{{ url_for('home') }}">На главную</a> 
+</div>
+<h2>Управление словарями</h2>
+<div class="container"> 
+
+    {% endif %}
+    <div class="upload-form">
+        <h3>Загрузить новый словарь</h3>
+        <p>Файл должен быть в формате .txt, каждая строка: <code>слово:перевод:счет</code> (счет опционален).</p>
+        <form method="post" action="{{ url_for('dictionaries') }}" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <input type="submit" value="Загрузить">
+        </form>
+    </div>
+
+    <div class="select-dictionary">
+        <h3>Выбрать словарь из списка</h3>
+        <a href="{{ url_for('select_dictionary') }}" class="button">Выбрать</a>
+    </div>
+</div>
+{% endblock %}

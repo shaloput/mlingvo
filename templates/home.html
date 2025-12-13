@@ -12,12 +12,10 @@
         {% if current_user.is_authenticated %}
         <div class="user-info">
             <span>Привет, <strong>{{ current_user.username }}</strong>!</span>
-            <a href="{{ url_for('edit_dictionary') }}">Редактировать словарь</a>
-            <a href="{{ url_for('dictionaries') }}">Управление словарями</a>
-
             {% if current_user.is_admin %}
                 <a href="{{ url_for('admin_panel') }}" class="admin-link">Админ-панель</a>
             {% endif %}
+            <a href="{{ url_for('dictionaries') }}">Добавить словарь</a>
             <a href="{{ url_for('logout') }}">Выйти</a>
         </div>
         {% endif %}
@@ -38,7 +36,7 @@
         <ul class="dictionary-list">
             {% for dic in active_dictionaries %}
             <li>
-                <span class="dic-name">{{ dic.name }}</span>
+                <span class="dic-name"><a href="{{ url_for('edit_dictionary', dictionary_name=dic.name) }}">{{ dic.name }}</a></span>
                 <div class="dic-actions">
                     <a href="{{ url_for('quiz', dictionary_name=dic.name) }}" class="play" title="Начать тест">Играть</a>
                     <a href="{{ url_for('reset_scores', dictionary_name=dic.name) }}" class="reset" title="Сбросить счет">Сброс</a>

@@ -255,6 +255,46 @@ def add_dictionary_from_list(dictionary_name):
     flash(f'Словарь "{dictionary_name}" успешно добавлен!')
     return redirect(url_for('home'))
 
+@app.route('/edit_dictionary', methods=['GET'])
+@login_required
+def edit_dictionary():
+    dictionaries = Dictionary.query.filter_by(user_id=current_user.id, is_completed=False).all()
+    selected_dictionary = request.args.get('dictionary_name')
+    dictionary_content = None
+
+    if selected_dictionary:
+        dictionary_data = load_user_dictionary(current_user.username, selected_dictionary)
+        if dictionary_data:
+            dictionary_content = ""
+            for eng, data in dictionary_data.items():
+                dictionary_content += f"{eng}:{data['translation']}:{data['score']}\n"
+
+    return render_template('edit_dictionary.html', dictionaries=dictionaries, selected_dictionary=selected_dictionary, dictionary_content=dictionary_content)
+
+@app.route('/save_dictionary', methods=['POST'])
+@login_required
+def save_dictionary():
+    dictionary_name = request.form.get('dictionary_name')
+    dictionary_content = request.form.get('dictionary_content')
+
+    if not dictionary_name or not dictionary_content:
+        flash('Не удалось сохранить словарь. Отсутствует имя или содержимое.', 'error')
+        return redirect(url_for('edit_dictionary'))
+
+    dictionary_data = {}
+    for line in dictionary_content.strip().split('\n'):
+        parts = line.strip().split(':')
+        if len(parts) >= 2:
+            eng = parts[0].lower()
+            rus = parts[1]
+            score = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+            dictionary_data[eng] = {'translation': rus, 'score': score}
+
+    save_user_dictionary(current_user.username, dictionary_name, dictionary_data)
+    flash(f'Словарь "{dictionary_name}" успешно сохранен.')
+    return redirect(url_for('edit_dictionary', dictionary_name=dictionary_name))
+
+
 
 
 

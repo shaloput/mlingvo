@@ -20,15 +20,32 @@
 
     {% if dictionary_content %}
     <form method="post" action="{{ url_for('save_dictionary') }}">
-        <input type="hidden" name="dictionary_name" value="{{ selected_dictionary }}">
+        <input type="hidden" name="original_dictionary_name" value="{{ selected_dictionary }}">
+        <div class="form-field">
+            <label for="new_dictionary_name">Имя словаря:</label>
+            <input type="text" name="new_dictionary_name" id="new_dictionary_name" value="{{ selected_dictionary }}">
+        </div>
         <div class="form-field">
             <label for="dictionary_content">Содержимое словаря:</label>
-            <textarea name="dictionary_content" id="dictionary_content" rows="20">{{ dictionary_content }}</textarea>
+            <textarea name="dictionary_content" id="dictionary_content" rows="1" style="overflow-y: hidden;">{{ dictionary_content }}</textarea>
         </div>
         <div class="form-field">
             <input type="submit" value="Сохранить изменения" class="submit-btn login">
         </div>
     </form>
+    <script>
+        const textarea = document.getElementById('dictionary_content');
+
+        function autoResize() {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        textarea.addEventListener('input', autoResize);
+
+        // Initial resize
+        autoResize();
+    </script>
     {% endif %}
 </div>
 {% endblock %}

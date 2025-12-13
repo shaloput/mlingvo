@@ -274,12 +274,31 @@ def edit_dictionary():
 @app.route('/save_dictionary', methods=['POST'])
 @login_required
 def save_dictionary():
-    dictionary_name = request.form.get('dictionary_name')
+    original_dictionary_name = request.form.get('original_dictionary_name')
+    new_dictionary_name = request.form.get('new_dictionary_name')
     dictionary_content = request.form.get('dictionary_content')
 
-    if not dictionary_name or not dictionary_content:
+    if not original_dictionary_name or not new_dictionary_name or not dictionary_content:
         flash('Не удалось сохранить словарь. Отсутствует имя или содержимое.', 'error')
         return redirect(url_for('edit_dictionary'))
+
+    # Handle renaming
+    if original_dictionary_name != new_dictionary_name:
+        # Check if new name already exists
+        if Dictionary.query.filter_by(user_id=current_user.id, name=new_dictionary_name).first():
+            flash(f'Словарь с именем "{new_dictionary_name}" уже существует.', 'error')
+            return redirect(url_for('edit_dictionary', dictionary_name=original_dictionary_name))
+
+        # Rename file
+        old_path = get_user_dictionary_path(current_user.username, original_dictionary_name)
+        new_path = get_user_dictionary_path(current_user.username, new_dictionary_name)
+        if os.path.exists(old_path):
+            os.rename(old_path, new_path)
+
+        # Update database
+        dic = Dictionary.query.filter_by(user_id=current_user.id, name=original_dictionary_name).first()
+        dic.name = new_dictionary_name
+        db.session.commit()
 
     dictionary_data = {}
     for line in dictionary_content.strip().split('\n'):
@@ -290,9 +309,9 @@ def save_dictionary():
             score = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
             dictionary_data[eng] = {'translation': rus, 'score': score}
 
-    save_user_dictionary(current_user.username, dictionary_name, dictionary_data)
-    flash(f'Словарь "{dictionary_name}" успешно сохранен.')
-    return redirect(url_for('edit_dictionary', dictionary_name=dictionary_name))
+    save_user_dictionary(current_user.username, new_dictionary_name, dictionary_data)
+    flash(f'Словарь "{new_dictionary_name}" успешно сохранен.')
+    return redirect(url_for('edit_dictionary', dictionary_name=new_dictionary_name))
 
 
 

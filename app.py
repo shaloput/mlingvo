@@ -258,18 +258,28 @@ def add_dictionary_from_list(dictionary_name):
 @app.route('/edit_dictionary', methods=['GET'])
 @login_required
 def edit_dictionary():
-    dictionaries = Dictionary.query.filter_by(user_id=current_user.id, is_completed=False).all()
+    user_id = request.args.get('user_id')
+    if user_id:
+        if not current_user.is_admin:
+            flash('У вас нет прав для доступа к этой странице.')
+            return redirect(url_for('home'))
+        user = User.query.get_or_404(user_id)
+        dictionaries = Dictionary.query.filter_by(user_id=user.id, is_completed=False).all()
+    else:
+        user = current_user
+        dictionaries = Dictionary.query.filter_by(user_id=current_user.id, is_completed=False).all()
+
     selected_dictionary = request.args.get('dictionary_name')
     dictionary_content = None
 
     if selected_dictionary:
-        dictionary_data = load_user_dictionary(current_user.username, selected_dictionary)
+        dictionary_data = load_user_dictionary(user.username, selected_dictionary)
         if dictionary_data:
             dictionary_content = ""
             for eng, data in dictionary_data.items():
                 dictionary_content += f"{eng}:{data['translation']}:{data['score']}\n"
 
-    return render_template('edit_dictionary.html', dictionaries=dictionaries, selected_dictionary=selected_dictionary, dictionary_content=dictionary_content)
+    return render_template('edit_dictionary.html', dictionaries=dictionaries, selected_dictionary=selected_dictionary, dictionary_content=dictionary_content, user_id=user_id)
 
 @app.route('/save_dictionary', methods=['POST'])
 @login_required

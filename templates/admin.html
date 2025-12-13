@@ -34,7 +34,7 @@
                 {% for user, last_login_time in users_with_login %}
                 <tr>
                     <td>{{ user.id }}</td>
-                    <td>{{ user.username }}</td>
+                    <td><a href="{{ url_for('edit_dictionary', user_id=user.id) }}">{{ user.username }}</a></td>
                     <td>{% if user.is_admin %}Да{% else %}Нет{% endif %}</td>
                     <td>
                         {% if last_login_time %}

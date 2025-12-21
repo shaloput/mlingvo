@@ -1,36 +1,59 @@
 {% extends "base.html" %}
-{% block content %}    
+{% block content %}
 <body class="quiz-body">
-    <div class="container">
+    <div class="container quiz-container">
         {% if current_user.is_authenticated %}
         <div class="user-info">
             <a href="{{ url_for('home') }}">&larr; К списку словарей</a>
-                </div>
+        </div>
         {% endif %}
+        
         <h1>Угадай перевод</h1>
+
         <div class="word-container">
             <h1>{{ word_to_translate }}</h1>
             <button class="speak-btn" onclick="speak('{{ word_to_translate }}')">🔊</button>
         </div>
-        <div class="options">
-            {% for option in options %}
-                <a href="{{ url_for('check_answer', dictionary_name=dictionary_name, word=word_to_translate, answer=option, options=options) }}" class="option-link">
-                    <div class="option">{{ option }}</div>
-                </a>
-            {% endfor %}
-        </div>
+
+        <form method="POST" action="{{ url_for('quiz', dictionary_name=dictionary_name) }}">
+            <input type="hidden" name="word" value="{{ word_to_translate }}">
+            <input type="hidden" name="options" value="{{ options|join(',') }}">
+            
+            <div class="options-container">
+                {% for option in options %}
+                    <div class="radio-option">
+                        <input type="radio" id="option_{{ loop.index }}" name="answer" value="{{ option }}"
+                               onchange="this.form.submit()"
+                               {% if is_answered %}disabled{% endif %}
+                               {% if not is_answered %}required{% endif %}>
+                        <label for="option_{{ loop.index }}" class="option
+                            {% if is_answered and option == correct_answer %}
+                                correct
+                            {% elif is_answered and option == user_answer and not is_correct %}
+                                incorrect
+                            {% endif %}
+                        ">{{ option }}</label>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if is_answered %}
+                <div class="button-container">
+                    <a href="{{ url_for('quiz', dictionary_name=dictionary_name) }}" class="submit-btn next">Далее &rarr;</a>
+                </div>
+                <div class="answer-info">
+                    <p class="score">Счет для этого слова: {{ score }}</p>
+                </div>
+            {% endif %}
+        </form>
     </div>
 
     <script>
         function speak(text) {
             if ('speechSynthesis' in window) {
-                // Остановить предыдущее воспроизведение, если оно есть
                 window.speechSynthesis.cancel();
-
                 const utterance = new SpeechSynthesisUtterance(text);
-                // Выбираем голос. Можно найти доступные голоса через `speechSynthesis.getVoices()`
-                // Для простоты, оставим выбор по умолчанию, но укажем язык.
-                utterance.lang = 'en-US'; 
+                utterance.lang = 'en-US';
                 window.speechSynthesis.speak(utterance);
             } else {
                 alert('Ваш браузер не поддерживает синтез речи.');

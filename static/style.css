@@ -265,21 +265,22 @@ th {
 }
 
 .message {
-    font-size: 1.5em;
+    font-size: 1.2em; /* Adjusted for new layout */
     font-weight: bold;
-    margin-bottom: 20px;
+    margin-top: 20px;
+    margin-bottom: 10px;
 }
 .message.correct { color: #28a745; }
 .message.incorrect { color: #dc3545; }
 
 .correct {
-    background-color: #d4edda;
-    border-color: #28a745;
+    background-color: #d4edda !important;
+    border-color: #c3e6cb !important;
 }
 
 .incorrect {
-    background-color: #f8d7da;
-    border-color: #dc3545;
+    background-color: #f8d7da !important;
+    border-color: #f5c6cb !important;
 }
 .correct-outline {
     border-color: #28a745 !important; /* Use important to override other borders */
@@ -287,7 +288,7 @@ th {
 }
 
 .button-container {
-    margin-top: 40px;
+    margin-top: 30px; /* Adjusted margin */
 }
 
 a.next-word {
@@ -301,7 +302,7 @@ a.next-word {
 }
 
 .score {
-    margin-top: 20px;
+    margin-top: 10px; /* Adjusted margin */
     font-size: 1.1em;
     color: #666;
 }
@@ -363,4 +364,63 @@ a.next-word {
 }
 .completed-container a.button.home {
     background-color: #6c757d;
+}
+
+/* New Quiz Styles */
+.options-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.radio-option input[type="radio"] {
+    display: none; /* Hide the actual radio button */
+}
+
+.radio-option label.option {
+    display: block;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.radio-option input[type="radio"]:not(:disabled) + label.option:hover {
+    transform: translateY(-5px);
+    border-color: #007bff;
+    background-color: #e9f5ff;
+}
+
+.radio-option input[type="radio"]:checked + label.option {
+    border-color: #007bff;
+    background-color: #e0efff;
+}
+
+.submit-btn.check {
+    background-color: #007bff;
+    padding: 15px 30px;
+    font-size: 1.1em;
+}
+.submit-btn.check:hover {
+    background-color: #0056b3;
+}
+
+.submit-btn.next {
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+    background-color: #28a745;
+    padding: 15px 30px;
+    font-size: 1.1em;
+    width: auto;
+}
+.submit-btn.next:hover {
+    background-color: #218838;
+}
+
+.answer-info {
+    margin-top: 20px;
 }

@@ -327,11 +327,10 @@ def save_dictionary():
 
 
 
-@app.route('/quiz/<string:dictionary_name>')
+@app.route('/quiz/<string:dictionary_name>', methods=['GET', 'POST'])
 @login_required
 def quiz(dictionary_name):
     dic = Dictionary.query.filter_by(user_id=current_user.id, name=dictionary_name).first_or_404()
-    
     session_key = f"quiz_dict_{current_user.id}_{dictionary_name}"
 
     if session_key not in session:
@@ -341,8 +340,40 @@ def quiz(dictionary_name):
             return redirect(url_for('home'))
         session[session_key] = full_dictionary
         session.modified = True
-
+    
     current_dictionary = session[session_key]
+    
+    # Logic for POST request (checking an answer)
+    if request.method == 'POST':
+        word = request.form.get('word', '').lower()
+        user_answer = request.form.get('answer', '')
+        options_str = request.form.get('options', '')
+        options = options_str.split(',') if options_str else []
+
+
+        if not word or not user_answer:
+            flash('Произошла ошибка, попробуйте еще раз.', 'warning')
+            return redirect(url_for('quiz', dictionary_name=dictionary_name))
+
+        correct_translation = current_dictionary.get(word, {}).get('translation')
+        is_correct = (user_answer == correct_translation)
+
+        if is_correct:
+            current_dictionary[word]['score'] += 1
+            session.modified = True
+            save_user_dictionary(current_user.username, dictionary_name, current_dictionary)
+
+        return render_template('quiz.html',
+                               word_to_translate=word.capitalize(),
+                               options=options,
+                               user_answer=user_answer,
+                               correct_answer=correct_translation,
+                               is_correct=is_correct,
+                               score=current_dictionary.get(word, {}).get('score', 0),
+                               dictionary_name=dictionary_name,
+                               is_answered=True)
+
+    # Logic for GET request (displaying a new word)
     word_pool = [word for word, data in current_dictionary.items() if data['score'] < app.config['LEARNED_THRESHOLD']]
 
     if not word_pool:
@@ -363,36 +394,8 @@ def quiz(dictionary_name):
     return render_template('quiz.html', 
                            word_to_translate=word_to_translate.capitalize(), 
                            options=options,
-                           dictionary_name=dictionary_name)
-
-@app.route('/check/<string:dictionary_name>')
-@login_required
-def check_answer(dictionary_name):
-    word = request.args.get('word', '').lower()
-    user_answer = request.args.get('answer', '')
-    session_key = f"quiz_dict_{current_user.id}_{dictionary_name}"
-
-    if not word or not user_answer or session_key not in session:
-        flash('Сессия для данного словаря устарела, начните заново.', 'warning')
-        return redirect(url_for('home'))
-
-    current_dictionary = session[session_key]
-    correct_translation = current_dictionary.get(word, {}).get('translation')
-    is_correct = (user_answer == correct_translation)
-
-    if is_correct:
-        current_dictionary[word]['score'] += 1
-        session.modified = True
-        save_user_dictionary(current_user.username, dictionary_name, current_dictionary)
-    
-    return render_template('answer.html',
-                           word_to_translate=word.capitalize(),
-                           options=request.args.getlist('option'),
-                           user_answer=user_answer,
-                           correct_answer=correct_translation,
-                           is_correct=is_correct,
-                           score=current_dictionary.get(word, {}).get('score', 0),
-                           dictionary_name=dictionary_name)
+                           dictionary_name=dictionary_name,
+                           is_answered=False)
 
 
 @app.route('/move_to_completed/<string:dictionary_name>')

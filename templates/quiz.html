@@ -1,14 +1,13 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Угадай перевод</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
+{% extends "base.html" %}
+{% block content %}    
 <body class="quiz-body">
-    <a href="{{ url_for('home') }}" class="back-link">&larr; К списку словарей</a>
-    <div class="container quiz-container">
+    <div class="container">
+        {% if current_user.is_authenticated %}
+        <div class="user-info">
+            <a href="{{ url_for('home') }}">&larr; К списку словарей</a>
+                </div>
+        {% endif %}
+        <h1>Угадай перевод</h1>
         <div class="word-container">
             <h1>{{ word_to_translate }}</h1>
             <button class="speak-btn" onclick="speak('{{ word_to_translate }}')">🔊</button>
@@ -39,4 +38,5 @@
         }
     </script>
 </body>
-</html>
+{% endblock %}
+

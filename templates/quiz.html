@@ -11,7 +11,7 @@
         <h1>Угадай перевод</h1>
 
         <div class="word-container">
-            <h1>{{ word_to_translate }}</h1>
+            <h1><a href="https://dictionary.cambridge.org/dictionary/english/{{ word_to_translate | lower }}" target="_blank">{{ word_to_translate }}</a></h1>
             <button class="speak-btn" onclick="speak('{{ word_to_translate }}')">🔊</button>
         </div>
 
